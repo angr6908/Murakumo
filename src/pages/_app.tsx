@@ -4,19 +4,17 @@ import '../styles/globals.css'
 import '../styles/markdown-github.css'
 import '../utils/fontawesome'
 
+import type { NextPage } from 'next'
 import type { AppProps } from 'next/app'
+import type { ReactElement, ReactNode } from 'react'
 
-import RouteProgressBar from '../components/RouteProgressBar'
+// Pages may attach `getLayout` to wrap themselves in a layout that persists across route changes.
+type NextPageWithLayout = NextPage & {
+  getLayout?: (page: ReactElement, pageProps: any) => ReactNode
+}
 
-const progressOptions = { showSpinner: false }
-
-function MyApp({ Component, pageProps }: AppProps) {
-  return (
-    <>
-      <RouteProgressBar height={1} color="rgb(156, 163, 175, 0.9)" options={progressOptions} />
-
-      <Component {...pageProps} />
-    </>
-  )
+function MyApp({ Component, pageProps }: AppProps & { Component: NextPageWithLayout }) {
+  const getLayout = Component.getLayout ?? ((page: ReactElement) => page)
+  return getLayout(<Component {...pageProps} />, pageProps)
 }
 export default MyApp

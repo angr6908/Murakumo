@@ -1,10 +1,14 @@
-import type { GetServerSideProps } from 'next'
+import type { GetStaticProps } from 'next'
 
-import DrivePage from '../components/DrivePage'
-import { getServerSidePublicConfigProps, type PublicConfigProps } from '../utils/serverConfig'
+import DrivePage, { driveLayout } from '../components/DrivePage'
+import { getServerSidePublicConfigProps } from '../utils/serverConfig'
 
-export default function Home({ publicConfig, brandIcons }: PublicConfigProps) {
-  return <DrivePage publicConfig={publicConfig} brandIcons={brandIcons} />
+function Home() {
+  return <DrivePage />
 }
+Home.getLayout = driveLayout
+export default Home
 
-export const getServerSideProps: GetServerSideProps = async () => getServerSidePublicConfigProps()
+// Statically generated: the props are env-derived and identical per request, so the HTML is
+// prebuilt and served from the edge instead of cold-starting a function on every visit.
+export const getStaticProps: GetStaticProps = async () => getServerSidePublicConfigProps()

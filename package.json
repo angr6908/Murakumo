@@ -2,6 +2,7 @@
   "name": "murakumo",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "packageManager": "bun@1.3.14",
   "scripts": {
     "dev": "bun run next dev",
@@ -28,7 +29,6 @@
     "katex": "^0.17.0",
     "mpegts.js": "^1.8.0",
     "next": "^16.2.11",
-    "nprogress": "^0.2.0",
     "plyr-react": "^6.0.0",
     "preview-office-docs": "^1.0.2",
     "react": "^19.2.8",
@@ -51,10 +51,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.5",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/bun": "^1.3.14",
     "@types/cors": "^2.8.19",
     "@types/crypto-js": "^4.2.2",
-    "@types/nprogress": "^0.2.3",
     "@types/react": "^19.2.17",
     "@types/react-syntax-highlighter": "^15.5.13",
     "postcss": "^8.5.22",
