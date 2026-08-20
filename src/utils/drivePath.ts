@@ -1,9 +1,10 @@
-import type { ParsedUrlQuery } from 'node:querystring'
+/** Query-string mapping as parsed by the router (replaces `node:querystring`'s `ParsedUrlQuery`). */
+export type QueryMap = Record<string, string | string[] | undefined>
 
 /** Encode drive path segments the way every link and API call in the app expects. */
 export const encodeSegments = (segments: string[]) => segments.map(encodeURIComponent).join('/')
 
-export function queryToPath(query?: ParsedUrlQuery): string {
+export function queryToPath(query?: QueryMap): string {
   if (!query?.path) return '/'
   const { path } = query
   return `/${encodeSegments(typeof path === 'string' ? [path] : path)}`
@@ -19,7 +20,10 @@ export const basename = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 /** Everything before the last segment, e.g. `/a/b/c.txt` -> `/a/b`. */
 export const dirname = (path: string) => path.slice(0, path.lastIndexOf('/'))
 
-type DriveItemName = { name?: unknown }
-const normaliseName = (name: unknown) => (typeof name === 'string' ? name.normalize('NFKC').trim().toLowerCase() : '')
-const isPersonalVaultItem = (item: DriveItemName) => normaliseName(item.name) === 'personal vault'
-export const isNotPersonalVaultItem = <T extends DriveItemName>(item: T) => !isPersonalVaultItem(item)
+/**
+ * OneDrive caps the visible folder "Personal Vault" at the drive root; it can't be opened from
+ * the browser, so the listing filters it out. Normalising (NFKC + trim + lower) matches how
+ * Graph actually presents the name.
+ */
+export const isNotPersonalVaultItem = (item: { name?: unknown }) =>
+  (typeof item.name === 'string' ? item.name.normalize('NFKC').trim().toLowerCase() : '') !== 'personal vault'

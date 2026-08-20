@@ -1,6 +1,6 @@
-import type { ParsedUrlQuery } from 'node:querystring'
 import type { ReactElement } from 'react'
 
+import type { QueryMap } from '../utils/drivePath'
 import type { PublicConfigProps } from '../utils/serverConfig'
 import Breadcrumb from './Breadcrumb'
 import FileListing from './FileListing'
@@ -13,7 +13,7 @@ export default function DrivePage({
   query,
   navClassName = defaultNavClassName,
 }: {
-  query?: ParsedUrlQuery
+  query?: QueryMap
   navClassName?: string
 }) {
   return (

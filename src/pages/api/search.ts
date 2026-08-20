@@ -1,7 +1,13 @@
-import axios from 'axios'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import apiConfig from '../../utils/apiConfig'
-import { driveItemUrl, graphHeaders, requireAccessToken, sendDriveError } from '../../utils/apiRoute'
+import {
+  driveItemUrl,
+  graphHeaders,
+  requireAccessToken,
+  sendDriveError,
+  setDefaultCacheControl,
+} from '../../utils/apiRoute'
+import { encodeSegments } from '../../utils/drivePath'
+import { get } from '../../utils/http'
 import siteConfig from '../../utils/siteConfig'
 
 function sanitizeQuery(query: string): string {
@@ -10,10 +16,22 @@ function sanitizeQuery(query: string): string {
   )
 }
 
+/**
+ * Graph `parentReference.path` looks like `/drives/{driveId}/root:/Base/sub`, and `Base` is the
+ * configured base directory. Split on that anchor (or `root:` when the base is the drive root) to
+ * recover the app's slash path, then encode each segment — the same mapping the folder listing
+ * uses, done once here so the client doesn't re-derive it per result.
+ */
+function parentReferenceToAppPath(path: string): string {
+  const anchor = siteConfig.baseDirectory === '/' ? 'root:' : siteConfig.baseDirectory
+  const [, absolutePath = ''] = path.split(anchor)
+  return absolutePath ? encodeSegments(absolutePath.split('/').map(decodeURIComponent)) : ''
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { q: searchQuery = '' } = req.query
 
-  res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
+  setDefaultCacheControl(res)
 
   if (typeof searchQuery !== 'string') {
     res.status(200).json([])
@@ -32,14 +50,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const searchApi = driveItemUrl('/', `/search(q='${sanitizeQuery(cleanQuery)}')`)
 
   try {
-    const { data } = await axios.get(searchApi, {
+    const { data } = await get(searchApi, {
       headers: graphHeaders(accessToken),
       params: {
         $select: 'id,name,file,folder,parentReference',
         $top: siteConfig.maxItems,
       },
     })
-    res.status(200).json(data.value)
+    const items = (data.value ?? []).map((item: any) => ({
+      ...item,
+      path:
+        typeof item.parentReference?.path === 'string'
+          ? `${parentReferenceToAppPath(item.parentReference.path)}/${encodeURIComponent(item.name)}`
+          : '',
+    }))
+    res.status(200).json(items)
   } catch (error: any) {
     sendDriveError(res, error)
   }

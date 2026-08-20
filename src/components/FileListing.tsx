@@ -1,10 +1,9 @@
-import type { ParsedUrlQuery } from 'node:querystring'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
 import { type FC, type ReactElement, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { OdFileObject, OdFolderObject } from '../types'
-import { basename, getItemPath, isNotPersonalVaultItem, queryToPath } from '../utils/drivePath'
+import { basename, getItemPath, isNotPersonalVaultItem, type QueryMap, queryToPath } from '../utils/drivePath'
 import { useProtectedSWRInfinite } from '../utils/fetchWithSWR'
 import { FontAwesomeIcon } from '../utils/fontawesome'
 import { getExtension } from '../utils/getFileIcon'
@@ -78,18 +77,17 @@ const getSelectionState = (files: OdFolderObject['value'], selected: SelectedFil
   return hasSelected && hasUnselected ? 1 : hasSelected ? 2 : 0
 }
 
-const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
+const FileListing: FC<{ query?: QueryMap }> = ({ query }) => {
   const [selected, setSelected] = useState<SelectedFiles>({})
   const [totalGenerating, setTotalGenerating] = useState(false)
   const [folderGenerating, setFolderGenerating] = useState<Record<string, boolean>>({})
 
   const router = useRouter()
-  const hashedToken = getStoredToken(router.asPath)
   const [layout] = useLocalStorage('preferredLayout', layouts[0])
 
   const path = queryToPath(query)
 
-  const { data, error, size, setSize } = useProtectedSWRInfinite(path)
+  const { data, error, size, setSize, hashedToken } = useProtectedSWRInfinite(path)
 
   // Derived once per fetched page rather than on every selection toggle — normalising and
   // filtering every child is otherwise repeated on each re-render of the listing.

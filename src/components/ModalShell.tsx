@@ -12,6 +12,7 @@ export default function ModalShell({
   backdropClassName,
   panelClassName,
   leaveDuration = 'duration-100',
+  dialogClassName = '',
   children,
 }: {
   open: boolean
@@ -20,11 +21,18 @@ export default function ModalShell({
   backdropClassName: string
   panelClassName: string
   leaveDuration?: string
+  /** Extra classes for the dialog root, e.g. a higher z-index to sit above the navbar. */
+  dialogClassName?: string
   children: ReactNode
 }) {
   return (
     <Transition appear show={open} as={Fragment}>
-      <Dialog as="div" className="fixed inset-0 z-10 overflow-y-auto" onClose={onClose} initialFocus={initialFocus}>
+      <Dialog
+        as="div"
+        className={`fixed inset-0 z-10 overflow-y-auto ${dialogClassName}`}
+        onClose={onClose}
+        initialFocus={initialFocus}
+      >
         <div className="min-h-screen px-4 text-center">
           <Transition.Child
             as={Fragment}

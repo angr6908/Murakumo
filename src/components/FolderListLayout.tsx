@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import type { FC } from 'react'
+import { memo } from 'react'
 import type { OdFolderChildren } from '../types'
 import { getItemPath } from '../utils/drivePath'
 import { formatModifiedDateTime, humanFileSize } from '../utils/fileDetails'
@@ -14,7 +14,7 @@ import {
   SelectedFilesControls,
 } from './FolderControls'
 
-const FileListItem: FC<{ fileContent: OdFolderChildren }> = ({ fileContent: c }) => {
+const FileListItem = memo(function FileListItem({ fileContent: c }: { fileContent: OdFolderChildren }) {
   return (
     <div className="grid cursor-pointer grid-cols-10 items-center space-x-2 px-3 py-2.5">
       <div className="col-span-10 flex items-center space-x-2 truncate md:col-span-6" title={c.name}>
@@ -31,7 +31,7 @@ const FileListItem: FC<{ fileContent: OdFolderChildren }> = ({ fileContent: c })
       </div>
     </div>
   )
-}
+})
 
 const FolderListLayout = (props: FolderLayoutProps) => {
   const { path, folderChildren, selected, toggleItemSelected } = props

@@ -12,13 +12,18 @@ import { DownloadFooter, PreviewContainer } from './Containers'
  */
 export default function FileContentPreview({
   url,
+  standalone = true,
   children,
 }: {
   url?: string
+  /** When embedded in a listing (e.g. a README), skip the sticky footer. */
+  standalone?: boolean
   children: (content: string) => ReactElement
 }) {
   const { asPath } = useCurrentPathToken()
   const { response: content, error, validating } = useFileContent(url ?? rawFileUrl(asPath, null, '', true), asPath)
+
+  const footer = standalone ? <DownloadFooter /> : null
 
   if (error) {
     return (
@@ -34,7 +39,7 @@ export default function FileContentPreview({
         <PreviewContainer>
           <Loading loadingText={'Loading file content...'} />
         </PreviewContainer>
-        <DownloadFooter />
+        {footer}
       </>
     )
   }
@@ -45,7 +50,7 @@ export default function FileContentPreview({
         <PreviewContainer>
           <FourOhFour errorMsg={'File is empty.'} />
         </PreviewContainer>
-        <DownloadFooter />
+        {footer}
       </>
     )
   }

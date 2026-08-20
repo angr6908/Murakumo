@@ -1,20 +1,20 @@
-import axios from 'axios'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import type { OdThumbnail } from '../../types'
-import apiConfig from '../../utils/apiConfig'
 import {
   driveItemUrl,
   graphHeaders,
   normalisePathQuery,
   requireAccessToken,
   sendDriveError,
+  setDefaultCacheControl,
   verifyProtectedPath,
 } from '../../utils/apiRoute'
+import { get } from '../../utils/http'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { path = '', size = 'medium', odpt = '' } = req.query
 
-  if (odpt === '') res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
+  if (odpt === '') setDefaultCacheControl(res)
 
   if (size !== 'large' && size !== 'medium' && size !== 'small') {
     res.status(400).json({ error: 'Invalid size' })
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!hasAccess) return
 
   try {
-    const { data } = await axios.get(driveItemUrl(pathQuery.path, '/thumbnails'), {
+    const { data } = await get(driveItemUrl(pathQuery.path, '/thumbnails'), {
       headers: graphHeaders(accessToken),
     })
 

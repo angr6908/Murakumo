@@ -13,11 +13,11 @@ export function DownloadBtnContainer({ children }: { children: React.ReactNode }
   )
 }
 
-/** The standard footer every preview ends with. */
-export function DownloadFooter() {
+/** The standard sticky footer every preview ends with; extra buttons render inside the button group. */
+export function DownloadFooter({ children }: { children?: React.ReactNode }) {
   return (
     <DownloadBtnContainer>
-      <DownloadButtonGroup />
+      <DownloadButtonGroup>{children}</DownloadButtonGroup>
     </DownloadBtnContainer>
   )
 }

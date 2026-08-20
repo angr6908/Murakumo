@@ -1,97 +1,32 @@
 import type { IconName, IconPrefix } from '@fortawesome/fontawesome-svg-core'
+import { extensionCategory, type FileCategory } from './fileType'
 
-const icons: { [key: string]: [IconPrefix, IconName] } = {
+// Category -> FontAwesome icon prefix. `markdown` uses the brand glyph; everything else uses a
+// regular file glyph.
+const iconForCategory: Record<FileCategory, [IconPrefix, IconName]> = {
   image: ['far', 'file-image'],
   pdf: ['far', 'file-pdf'],
-  word: ['far', 'file-word'],
-  powerpoint: ['far', 'file-powerpoint'],
-  excel: ['far', 'file-excel'],
-  audio: ['far', 'file-audio'],
-  video: ['far', 'file-video'],
-  archive: ['far', 'file-archive'],
+  office: ['far', 'file-alt'],
+  markdown: ['fab', 'markdown'],
   code: ['far', 'file-code'],
   text: ['far', 'file-alt'],
-  file: ['far', 'file'],
-  markdown: ['fab', 'markdown'],
+  video: ['far', 'file-video'],
+  audio: ['far', 'file-audio'],
+  epub: ['fas', 'book'],
   book: ['fas', 'book'],
-  link: ['fas', 'link'],
+  url: ['fas', 'link'],
+  archive: ['far', 'file-archive'],
 }
 
-const extensions = {
-  gif: icons.image,
-  jpeg: icons.image,
-  jpg: icons.image,
-  png: icons.image,
-  heic: icons.image,
-  webp: icons.image,
-
-  pdf: icons.pdf,
-
-  doc: icons.word,
-  docx: icons.word,
-
-  ppt: icons.powerpoint,
-  pptx: icons.powerpoint,
-
-  xls: icons.excel,
-  xlsx: icons.excel,
-
-  aac: icons.audio,
-  mp3: icons.audio,
-  ogg: icons.audio,
-  flac: icons.audio,
-  oga: icons.audio,
-  opus: icons.audio,
-  m4a: icons.audio,
-
-  avi: icons.video,
-  flv: icons.video,
-  mkv: icons.video,
-  mp4: icons.video,
-
-  '7z': icons.archive,
-  bz2: icons.archive,
-  xz: icons.archive,
-  wim: icons.archive,
-  gz: icons.archive,
-  rar: icons.archive,
-  tar: icons.archive,
-  zip: icons.archive,
-
-  c: icons.code,
-  cpp: icons.code,
-  js: icons.code,
-  jsx: icons.code,
-  java: icons.code,
-  sh: icons.code,
-  cs: icons.code,
-  py: icons.code,
-  css: icons.code,
-  html: icons.code,
-  ts: icons.code,
-  tsx: icons.code,
-  rs: icons.code,
-  vue: icons.code,
-  json: icons.code,
-  yml: icons.code,
-  yaml: icons.code,
-  toml: icons.code,
-
-  txt: icons.text,
-  rtf: icons.text,
-  vtt: icons.text,
-  srt: icons.text,
-  log: icons.text,
-  diff: icons.text,
-
-  md: icons.markdown,
-
-  epub: icons.book,
-  mobi: icons.book,
-  azw3: icons.book,
-
-  url: icons.link,
-} as Record<string, [IconPrefix, IconName]>
+// Office documents have distinct icons per actual format, so resolve them before the category.
+const officeIconBySubtype: Record<string, [IconPrefix, IconName]> = {
+  doc: ['far', 'file-word'],
+  docx: ['far', 'file-word'],
+  ppt: ['far', 'file-powerpoint'],
+  pptx: ['far', 'file-powerpoint'],
+  xls: ['far', 'file-excel'],
+  xlsx: ['far', 'file-excel'],
+}
 
 export function getRawExtension(fileName: string): string {
   return fileName.slice(((fileName.lastIndexOf('.') - 1) >>> 0) + 2)
@@ -106,6 +41,9 @@ export function stripExtension(fileName: string): string {
 
 export function getFileIcon(fileName: string, flags?: { video?: boolean }): [IconPrefix, IconName] {
   const extension = getExtension(fileName)
-  if (extension === 'ts' && flags?.video) return icons.video
-  return extensions[extension] ?? icons.file
+  if (extension === 'ts' && flags?.video) return iconForCategory.video
+
+  const category = extensionCategory[extension]
+  if (category === 'office') return officeIconBySubtype[extension] ?? iconForCategory.office
+  return category ? iconForCategory[category] : ['far', 'file']
 }

@@ -1,9 +1,15 @@
-import { posix as pathPosix } from 'node:path'
 import type { NextApiResponse } from 'next'
 
+import apiConfig from './apiConfig'
 import { checkAuthRoute, getAccessToken } from './onedriveApi'
+import { normalize, resolve } from './posix'
 
 export { driveItemUrl, graphHeaders } from './onedriveApi'
+
+/** The shared cache policy for API responses that aren't protected or freshly fetched. */
+export function setDefaultCacheControl(res: NextApiResponse) {
+  if (!res.getHeader('Cache-Control')) res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
+}
 
 export async function requireAccessToken(res: NextApiResponse): Promise<string | null> {
   const accessToken = await getAccessToken()
@@ -23,7 +29,7 @@ export function normalisePathQuery(
     return { error: 'Path query invalid.' }
   }
 
-  const cleanPath = pathPosix.resolve('/', pathPosix.normalize(path))
+  const cleanPath = resolve('/', normalize(path))
   return { path: trimTrailingSlash ? cleanPath.replace(/\/$/, '') : cleanPath }
 }
 

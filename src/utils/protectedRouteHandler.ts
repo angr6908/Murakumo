@@ -20,10 +20,33 @@ function encodedProtectedRoutes() {
   return encodedRoutesCache.routes
 }
 
+// The hashed token (like encodedProtectedRoutes) is constant for the lifetime of the page unless the
+// user clears localStorage, so it is memoized per raw path. Callers in the listing hot path invoke
+// this once per rendered row; a per-path cache avoids re-reading localStorage and re-hashing the
+// same route for every child on every render.
+const storedTokenCache = new Map<string, string | null>()
+
 export function getStoredToken(path: string): string | null {
-  const storedToken =
-    typeof window !== 'undefined' ? JSON.parse(localStorage.getItem(matchProtectedRoute(path)) as string) : ''
-  return storedToken ? encryptToken(storedToken) : null
+  const cached = storedTokenCache.get(path)
+  if (cached !== undefined) return cached
+
+  const storedToken = typeof window !== 'undefined' ? localStorage.getItem(matchProtectedRoute(path)) : ''
+  let result: string | null = null
+  if (storedToken) {
+    try {
+      const parsed = JSON.parse(storedToken)
+      result = parsed ? encryptToken(parsed) : null
+    } catch {
+      result = null
+    }
+  }
+  storedTokenCache.set(path, result)
+  return result
+}
+
+/** Invalidate path-token cache entries (e.g. after clearing tokens) so repeated lookups see fresh state. */
+export function clearStoredTokenCache() {
+  storedTokenCache.clear()
 }
 
 export function compareHashedToken({

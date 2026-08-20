@@ -1,4 +1,3 @@
-import axios from 'axios'
 import dynamic from 'next/dynamic'
 import { type FC, useEffect } from 'react'
 import { useAsync } from 'react-async-hook'
@@ -8,10 +7,10 @@ import { getBaseUrl } from '../../utils/getBaseUrl'
 import { getExtension, stripExtension } from '../../utils/getFileIcon'
 import { directFileUrl, rawFileUrl, thumbnailUrl } from '../../utils/odUrls'
 import { useCurrentPathToken } from '../../utils/useCurrentPathToken'
-import DownloadButtonGroup, { DownloadButton } from '../DownloadBtnGtoup'
+import { DownloadButton } from '../DownloadBtnGtoup'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
-import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import { DownloadFooter, PreviewContainer } from './Containers'
 
 import 'plyr-react/plyr.css'
 
@@ -30,11 +29,11 @@ const VideoPlayer: FC<{
   mpegts: any
 }> = ({ videoName, videoUrl, width, height, thumbnail, subtitle, isFlv, mpegts }) => {
   useEffect(() => {
-    axios
-      .get(subtitle, { responseType: 'blob' })
-      .then(resp => {
+    fetch(subtitle)
+      .then(resp => resp.blob())
+      .then(blob => {
         const track = document.querySelector('track')
-        track?.setAttribute('src', URL.createObjectURL(resp.data))
+        track?.setAttribute('src', URL.createObjectURL(blob))
       })
       .catch(() => {})
 
@@ -101,22 +100,20 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
         )}
       </PreviewContainer>
 
-      <DownloadBtnContainer>
-        <DownloadButtonGroup>
-          {[
-            { text: 'IINA', img: '/players/iina.png', url: `iina://weblink?url=${getBaseUrl()}${videoUrl}` },
-            { text: 'VLC', img: '/players/vlc.png', url: `vlc://${getBaseUrl()}${videoUrl}` },
-            { text: 'PotPlayer', img: '/players/potplayer.png', url: `potplayer://${getBaseUrl()}${videoUrl}` },
-            {
-              text: 'nPlayer',
-              img: '/players/nplayer.png',
-              url: `nplayer-http://${window?.location.hostname ?? ''}${videoUrl}`,
-            },
-          ].map(({ text, img, url }) => (
-            <DownloadButton key={text} onClickCallback={() => window.open(url)} btnText={text} btnImage={img} />
-          ))}
-        </DownloadButtonGroup>
-      </DownloadBtnContainer>
+      <DownloadFooter>
+        {[
+          { text: 'IINA', img: '/players/iina.png', url: `iina://weblink?url=${getBaseUrl()}${videoUrl}` },
+          { text: 'VLC', img: '/players/vlc.png', url: `vlc://${getBaseUrl()}${videoUrl}` },
+          { text: 'PotPlayer', img: '/players/potplayer.png', url: `potplayer://${getBaseUrl()}${videoUrl}` },
+          {
+            text: 'nPlayer',
+            img: '/players/nplayer.png',
+            url: `nplayer-http://${window.location.hostname}${videoUrl}`,
+          },
+        ].map(({ text, img, url }) => (
+          <DownloadButton key={text} onClickCallback={() => window.open(url)} btnText={text} btnImage={img} />
+        ))}
+      </DownloadFooter>
     </>
   )
 }

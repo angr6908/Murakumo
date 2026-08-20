@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import type { OdFolderChildren } from '../types'
 import { getItemPath } from '../utils/drivePath'
 import { formatModifiedDateTime } from '../utils/fileDetails'
@@ -16,7 +16,7 @@ import {
   SelectedFilesControls,
 } from './FolderControls'
 
-const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
+const GridItem = memo(function GridItem({ c, path }: { c: OdFolderChildren; path: string }) {
   // We use the generated medium thumbnail for rendering preview images (excluding folders)
   const hashedToken = getStoredToken(path)
   const thumbnail = 'folder' in c ? null : thumbnailUrl(path, 'medium', hashedToken)
@@ -58,7 +58,7 @@ const GridItem = ({ c, path }: { c: OdFolderChildren; path: string }) => {
       </div>
     </div>
   )
-}
+})
 
 const FolderGridLayout = (props: FolderLayoutProps) => {
   const { path, folderChildren, selected, toggleItemSelected } = props

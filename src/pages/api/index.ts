@@ -1,7 +1,5 @@
-import axios from 'axios'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import apiConfig from '../../utils/apiConfig'
 import {
   driveItemUrl,
   graphHeaders,
@@ -9,9 +7,11 @@ import {
   normalisePathQuery,
   requireAccessToken,
   sendDriveError,
+  setDefaultCacheControl,
   verifyProtectedPath,
 } from '../../utils/apiRoute'
 import { isNotPersonalVaultItem } from '../../utils/drivePath'
+import { get, isHttpError } from '../../utils/http'
 import { revealObfuscatedToken } from '../../utils/oAuthHandler'
 import { storeOdAuthTokens } from '../../utils/odAuthTokenStore'
 import { encodePath, runCorsMiddleware } from '../../utils/onedriveApi'
@@ -21,8 +21,8 @@ const driveItemSelect = 'name,size,id,lastModifiedDateTime,folder,file,video,ima
 const fileItemSelect = `${driveItemSelect},@microsoft.graph.downloadUrl`
 const isLikelyFilePath = (path: string) => /\.[^/.]+$/.test(path.split('/').pop() ?? '')
 const shouldFallbackToIdentity = (error: unknown) => {
-  if (!axios.isAxiosError(error)) return false
-  return error.response?.status === 400 || error.response?.status === 404
+  if (!isHttpError(error)) return false
+  return error.response.status === 400 || error.response.status === 404
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { path = '/', raw = false, next = '', sort = '' } = req.query
 
-  res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
+  setDefaultCacheControl(res)
 
   const pathQuery = normalisePathQuery(path, { trimTrailingSlash: true })
   if ('error' in pathQuery) {
@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const childrenUrl = driveItemUrl(cleanPath, '/children')
 
   const fetchFolderData = async () => {
-    const { data } = await axios.get(childrenUrl, {
+    const { data } = await get(childrenUrl, {
       headers: graphHeaders(accessToken),
       params: {
         select: driveItemSelect,
@@ -94,7 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await runCorsMiddleware(req, res)
     res.setHeader('Cache-Control', 'no-cache')
 
-    const { data } = await axios.get(requestUrl, {
+    const { data } = await get(requestUrl, {
       headers: graphHeaders(accessToken),
       params: { select: 'id,@microsoft.graph.downloadUrl' },
     })
@@ -122,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    const { data: identityData } = await axios.get(requestUrl, {
+    const { data: identityData } = await get(requestUrl, {
       headers: graphHeaders(accessToken),
       params: { select: fileItemSelect },
     })

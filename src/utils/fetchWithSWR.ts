@@ -1,4 +1,3 @@
-import axios from 'axios'
 import useSWRInfinite from 'swr/infinite'
 
 import type { OdAPIResponse } from '../types'
@@ -42,11 +41,16 @@ export async function fetcher([url, token]: [url: string, token?: string]): Prom
   }
 
   try {
-    const config = token ? { headers: { 'od-protected-token': token } } : undefined
-    const { data } = await axios.get(url, config)
-    return data
+    const headers = token ? { 'od-protected-token': token } : undefined
+    const response = await fetch(url, { headers })
+    if (!response.ok) {
+      const message = await response.text()
+      throw { status: response.status, message }
+    }
+    return await response.json()
   } catch (err: any) {
-    throw { status: err.response.status, message: err.response.data }
+    if (typeof err?.status === 'number') throw err
+    throw { status: 0, message: err?.message ?? String(err) }
   }
 }
 
@@ -58,5 +62,6 @@ export function useProtectedSWRInfinite(path: string = '') {
     return [driveListUrl(path, pageIndex === 0 ? undefined : previousPageData.next), hashedToken]
   }
 
-  return useSWRInfinite(getNextKey, fetcher, immutableOptions)
+  const { data, error, size, setSize } = useSWRInfinite(getNextKey, fetcher, immutableOptions)
+  return { data, error, size, setSize, hashedToken }
 }

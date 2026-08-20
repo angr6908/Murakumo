@@ -10,12 +10,10 @@ import 'katex/dist/katex.min.css'
 
 import type { OdDriveItemBase } from '../../types'
 import { dirname } from '../../utils/drivePath'
-import useFileContent from '../../utils/fetchOnMount'
 import { rawFileUrl } from '../../utils/odUrls'
 import { getStoredToken } from '../../utils/protectedRouteHandler'
-import FourOhFour from '../FourOhFour'
-import Loading from '../Loading'
 import { DownloadFooter, PreviewContainer } from './Containers'
+import FileContentPreview from './FileContentPreview'
 
 const SyntaxHighlighter = dynamic(() => import('./SyntaxHighlighter'), { ssr: false })
 
@@ -53,12 +51,6 @@ const MarkdownPreview: FC<{
   // The parent folder of the markdown file, which is also the relative image folder
   const parentPath = standalone ? dirname(path) : path
 
-  const {
-    response: content,
-    error,
-    validating,
-  } = useFileContent(rawFileUrl(`${parentPath}/${file.name}`, null, '', true), path)
-
   const customRenderer = useMemo(() => {
     const hashedToken = getStoredToken(parentPath)
 
@@ -84,36 +76,22 @@ const MarkdownPreview: FC<{
     }
   }, [parentPath])
 
-  if (error) {
-    return (
-      <PreviewContainer>
-        <FourOhFour errorMsg={error} />
-      </PreviewContainer>
-    )
-  }
-  if (validating) {
-    return (
-      <>
-        <PreviewContainer>
-          <Loading loadingText={'Loading file content...'} />
-        </PreviewContainer>
-        {standalone && <DownloadFooter />}
-      </>
-    )
-  }
-
   return (
-    <div>
-      <PreviewContainer>
-        <div className="markdown-body">
-          {/* Using rehypeRaw to render HTML inside Markdown is potentially dangerous, use under safe environments. (#18) */}
-          <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={customRenderer}>
-            {content}
-          </ReactMarkdown>
+    <FileContentPreview url={rawFileUrl(`${parentPath}/${file.name}`, null, '', true)} standalone={standalone}>
+      {content => (
+        <div>
+          <PreviewContainer>
+            <div className="markdown-body">
+              {/* Using rehypeRaw to render HTML inside Markdown is potentially dangerous, use under safe environments. (#18) */}
+              <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={customRenderer}>
+                {content}
+              </ReactMarkdown>
+            </div>
+          </PreviewContainer>
+          {standalone && <DownloadFooter />}
         </div>
-      </PreviewContainer>
-      {standalone && <DownloadFooter />}
-    </div>
+      )}
+    </FileContentPreview>
   )
 }
 

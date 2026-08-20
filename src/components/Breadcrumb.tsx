@@ -1,6 +1,5 @@
-import type { ParsedUrlQuery } from 'node:querystring'
 import Link from 'next/link'
-import { encodeSegments } from '../utils/drivePath'
+import { encodeSegments, type QueryMap } from '../utils/drivePath'
 import { FontAwesomeIcon } from '../utils/fontawesome'
 
 const HomeCrumb = () => {
@@ -12,7 +11,7 @@ const HomeCrumb = () => {
   )
 }
 
-const Breadcrumb: React.FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
+const Breadcrumb: React.FC<{ query?: QueryMap }> = ({ query }) => {
   const path = query?.path
 
   if (Array.isArray(path)) {

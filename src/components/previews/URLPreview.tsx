@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { DownloadButton } from '../DownloadBtnGtoup'
-import { DownloadBtnContainer, PreviewContainer } from './Containers'
+import { DownloadFooter, PreviewContainer } from './Containers'
 import FileContentPreview from './FileContentPreview'
 
 const parseDotUrl = (content: string): string | undefined => {
@@ -20,7 +20,7 @@ const URLPreview: FC = () => (
           <PreviewContainer>
             <pre className="overflow-x-scroll p-0 text-sm md:p-3">{content}</pre>
           </PreviewContainer>
-          <DownloadBtnContainer>
+          <DownloadFooter>
             <div className="flex justify-center">
               <DownloadButton
                 onClickCallback={() => window.open(url)}
@@ -30,7 +30,7 @@ const URLPreview: FC = () => (
                 btnTitle={`Open ${url}`}
               />
             </div>
-          </DownloadBtnContainer>
+          </DownloadFooter>
         </div>
       )
     }}

@@ -1,21 +1,18 @@
-import { posix as pathPosix } from 'node:path'
-import axios from 'axios'
-import Cors from 'cors'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import apiConfig from './apiConfig'
-import { getClientSecret } from './oAuthHandler'
+import { get, isHttpError } from './http'
+import { exchangeToken } from './oAuthHandler'
 import { getOdAuthTokens, storeOdAuthTokens } from './odAuthTokenStore'
+import { join, resolve } from './posix'
 import { compareHashedToken } from './protectedRouteHandler'
 import siteConfig from './siteConfig'
 
-const basePath = pathPosix.resolve('/', siteConfig.baseDirectory)
-const clientSecret = getClientSecret()
-const corsMiddleware = Cors({ methods: ['GET', 'HEAD'] })
+const basePath = resolve('/', siteConfig.baseDirectory)
 let refreshAccessTokenPromise: Promise<string> | null = null
 
 export function encodePath(path: string): string {
-  const encodedPath = pathPosix.join(basePath, path).replace(/\/$/, '')
+  const encodedPath = join(basePath, path).replace(/\/$/, '')
   return encodedPath === '/' || encodedPath === '' ? '' : `:${encodeURIComponent(encodedPath)}`
 }
 
@@ -32,18 +29,7 @@ export function driveItemUrl(path: string, sub = ''): string {
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<string> {
-  const body = new URLSearchParams({
-    client_id: apiConfig.clientId,
-    redirect_uri: apiConfig.redirectUri,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-    grant_type: 'refresh_token',
-  })
-
-  const resp = await axios.post(apiConfig.authApi, body, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    timeout: 15000,
-  })
+  const resp = await exchangeToken({ refresh_token: refreshToken, grant_type: 'refresh_token' })
 
   if ('access_token' in resp.data && 'refresh_token' in resp.data) {
     const { expires_in, access_token, refresh_token } = resp.data
@@ -82,10 +68,10 @@ export async function getAccessToken(): Promise<string> {
   try {
     return await refreshAccessTokenPromise
   } catch (error) {
-    if (axios.isAxiosError(error)) {
+    if (isHttpError(error)) {
       console.error('[onedriveApi] Failed to refresh access token.', {
         status: error.response?.status,
-        message: error.message,
+        message: error.response?.data,
       })
     } else {
       console.error('[onedriveApi] Failed to refresh access token.', error)
@@ -115,13 +101,13 @@ export async function checkAuthRoute(
   }
 
   try {
-    const token = await axios.get(driveItemUrl(authTokenPath), {
+    const token = await get(driveItemUrl(authTokenPath), {
       headers: graphHeaders(accessToken),
       params: {
         select: '@microsoft.graph.downloadUrl,file',
       },
     })
-    const odProtectedToken = await axios.get(token.data['@microsoft.graph.downloadUrl'])
+    const odProtectedToken = await get(token.data['@microsoft.graph.downloadUrl'])
 
     if (
       !compareHashedToken({
@@ -131,8 +117,8 @@ export async function checkAuthRoute(
     ) {
       return { code: 401, message: 'Password required.' }
     }
-  } catch (error: any) {
-    return error?.response?.status === 404
+  } catch (error: unknown) {
+    return isHttpError(error) && error.response.status === 404
       ? { code: 404, message: "You didn't set a password." }
       : { code: 500, message: 'Internal server error.' }
   }
@@ -140,8 +126,23 @@ export async function checkAuthRoute(
   return { code: 200, message: 'Authenticated.' }
 }
 
+/**
+ * Native CORS headers for the transparent API proxy routes (replaces the `cors`
+ * package). Handles preflight (`OPTIONS`) and mirrors the request origin.
+ */
+const CORS_METHODS = 'GET,HEAD,PUT,PATCH,POST,DELETE'
+
 export function runCorsMiddleware(req: NextApiRequest, res: NextApiResponse) {
-  return new Promise((resolve, reject) => {
-    corsMiddleware(req, res, result => (result instanceof Error ? reject(result) : resolve(result)))
-  })
+  const origin = req.headers.origin
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
+  res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] ?? '*')
+  res.setHeader('Access-Control-Allow-Methods', CORS_METHODS)
+  res.setHeader('Access-Control-Max-Age', '1728000')
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end()
+  }
 }

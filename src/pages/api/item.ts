@@ -1,12 +1,12 @@
-import axios from 'axios'
 import type { NextApiRequest, NextApiResponse } from 'next'
 import apiConfig from '../../utils/apiConfig'
-import { graphHeaders, requireAccessToken, sendDriveError } from '../../utils/apiRoute'
+import { graphHeaders, requireAccessToken, sendDriveError, setDefaultCacheControl } from '../../utils/apiRoute'
+import { get } from '../../utils/http'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id = '' } = req.query
 
-  res.setHeader('Cache-Control', apiConfig.cacheControlHeader)
+  setDefaultCacheControl(res)
 
   if (typeof id !== 'string') {
     res.status(400).json({ error: 'Invalid driveItem ID.' })
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!accessToken) return
 
   try {
-    const { data } = await axios.get(`${apiConfig.driveApi}/items/${id}`, {
+    const { data } = await get(`${apiConfig.driveApi}/items/${id}`, {
       headers: graphHeaders(accessToken),
       params: { select: 'id,name,parentReference' },
     })

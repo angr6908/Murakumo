@@ -1,43 +1,28 @@
 import { Dialog, Transition } from '@headlessui/react'
 import AwesomeDebouncePromise from 'awesome-debounce-promise'
-import axios from 'axios'
 import Link from 'next/link'
 import type { Dispatch, SetStateAction } from 'react'
 import { Fragment, useRef, useState } from 'react'
 import { useAsync } from 'react-async-hook'
-import type { SWRResponse } from 'swr'
-import useSWR from 'swr'
 import useConstant from 'use-constant'
-import type { OdDriveItem, OdSearchResult } from '../types'
-import { encodeSegments } from '../utils/drivePath'
-import { fetcher } from '../utils/fetchWithSWR'
+import type { OdSearchResult } from '../types'
 import { FontAwesomeIcon } from '../utils/fontawesome'
 
 import { getFileIcon } from '../utils/getFileIcon'
-import { getPublicRuntimeConfig } from '../utils/publicRuntimeConfig'
+import { get } from '../utils/http'
 import HiddenFocusGuard from './HiddenFocusGuard'
 import { LoadingIcon } from './Loading'
 
 type SearchItem = OdSearchResult[number]
 type SearchState = ReturnType<typeof useDriveItemSearch>['results']
 
-function mapAbsolutePath(path: string): string {
-  const siteConfig = getPublicRuntimeConfig()
-  const [, absolutePath = ''] = path.split(siteConfig.baseDirectory === '/' ? 'root:' : siteConfig.baseDirectory)
-  return absolutePath ? encodeSegments(absolutePath.split('/').map(decodeURIComponent)) : ''
-}
-
 function useDriveItemSearch() {
   const [query, setQuery] = useState('')
   const searchDriveItem = async (q: string) => {
-    const { data } = await axios.get<OdSearchResult>('/api/search/', { params: { q: q.trim() } })
-
-    return data.map(item => ({
+    const { data } = await get('/api/search/', { params: { q: q.trim() } })
+    return data.map((item: OdSearchResult[number]) => ({
       ...item,
-      path:
-        typeof item.parentReference?.path === 'string'
-          ? `${mapAbsolutePath(item.parentReference.path)}/${encodeURIComponent(item.name)}`
-          : '',
+      path: typeof item.path === 'string' ? item.path : '',
     }))
   }
 
@@ -92,45 +77,15 @@ function SearchResultRow({
   )
 }
 
-function SearchResultItemLoadRemote({ item, onSelect }: { item: SearchItem; onSelect: () => void }) {
-  const { data, error }: SWRResponse<OdDriveItem, { status: number; message: any }> = useSWR(
-    [`/api/item/?id=${item.id}`],
-    fetcher,
-  )
-
-  if (error) {
-    const message = typeof error.message?.error === 'string' ? error.message.error : JSON.stringify(error.message)
-    return <SearchResultRow item={item} driveItemPath="" description={message} disabled />
-  }
-
-  if (!data) {
-    return <SearchResultRow item={item} driveItemPath="" description="Loading ..." disabled />
-  }
-
-  const driveItemPath = `${mapAbsolutePath(data.parentReference.path)}/${encodeURIComponent(data.name)}`
-  return (
-    <SearchResultRow
-      item={item}
-      driveItemPath={driveItemPath}
-      description={decodeURIComponent(driveItemPath)}
-      disabled={false}
-      onSelect={onSelect}
-    />
-  )
-}
-
 function SearchResultItem({ item, onSelect }: { item: SearchItem; onSelect: () => void }) {
-  if (item.path === '') {
-    return <SearchResultItemLoadRemote item={item} onSelect={onSelect} />
-  }
-
   const driveItemPath = decodeURIComponent(item.path)
+  const disabled = item.path === ''
   return (
     <SearchResultRow
       item={item}
       driveItemPath={item.path}
-      description={driveItemPath}
-      disabled={false}
+      description={disabled ? 'Path unavailable' : driveItemPath}
+      disabled={disabled}
       onSelect={onSelect}
     />
   )

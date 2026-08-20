@@ -1,28 +1,46 @@
-import type { OutgoingHttpHeaders } from 'node:http'
-import axios from 'axios'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import apiConfig from '../../utils/apiConfig'
 import {
   driveItemUrl,
   graphHeaders,
   normalisePathQuery,
   requireAccessToken,
   sendDriveError,
+  setDefaultCacheControl,
   verifyProtectedPath,
 } from '../../utils/apiRoute'
+import { get, getStream } from '../../utils/http'
 import { runCorsMiddleware } from '../../utils/onedriveApi'
 
 const shouldProxyFile = (proxy: NextApiRequest['query'][string]) => proxy === 'true' || proxy === '1'
-const toOutgoingHeaders = (
-  headers: Record<string, unknown>,
+const toHeaderObject = (
+  headers: Headers,
   cacheControl: ReturnType<NextApiResponse['getHeader']>,
-): OutgoingHttpHeaders => ({
-  ...Object.fromEntries(
-    Object.entries(headers).filter(([, v]) => typeof v === 'number' || typeof v === 'string' || Array.isArray(v)),
-  ),
-  'Cache-Control': cacheControl,
-})
+): Record<string, string | number | string[]> => {
+  const out: Record<string, string | number | string[]> = {}
+  headers.forEach((value, key) => {
+    out[key] = value
+  })
+  if (cacheControl !== undefined) out['Cache-Control'] = String(cacheControl)
+  return out
+}
+
+/** Pipe a WHATWG ReadableStream into a Next.js ServerResponse (replaces axios `stream.pipe`). */
+async function pipeStream(stream: ReadableStream, res: NextApiResponse): Promise<void> {
+  const reader = stream.getReader()
+  res.flushHeaders?.()
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      res.write(Buffer.from(value))
+    }
+    res.end()
+  } catch (error) {
+    reader.cancel().catch(() => {})
+    res.destroy(error as Error)
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { path = '/', odpt = '', proxy } = req.query
@@ -39,11 +57,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const odTokenHeader = (req.headers['od-protected-token'] as string) ?? odpt
   const hasAccess = await verifyProtectedPath(res, pathQuery.path, accessToken, odTokenHeader as string)
   if (!hasAccess) return
-  const responseCacheControl = res.getHeader('Cache-Control') ?? apiConfig.cacheControlHeader
+  setDefaultCacheControl(res)
 
   await runCorsMiddleware(req, res)
   try {
-    const { data } = await axios.get(driveItemUrl(pathQuery.path), {
+    const { data } = await get(driveItemUrl(pathQuery.path), {
       headers: graphHeaders(accessToken),
       params: { select: 'id,size,@microsoft.graph.downloadUrl' },
     })
@@ -54,14 +72,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return
     }
 
+    const cacheControl = res.getHeader('Cache-Control')
+
     if (shouldProxyFile(proxy) && 'size' in data && data.size < 4194304) {
-      const { headers, data: stream } = await axios.get(downloadUrl as string, { responseType: 'stream' })
-      res.writeHead(200, toOutgoingHeaders(headers, responseCacheControl))
-      stream.pipe(res)
+      const { headers, data: stream } = await getStream(downloadUrl as string)
+      res.writeHead(200, toHeaderObject(headers, cacheControl))
+      await pipeStream(stream, res)
       return
     }
 
-    res.setHeader('Cache-Control', responseCacheControl)
     res.redirect(downloadUrl)
     return
   } catch (error: any) {
